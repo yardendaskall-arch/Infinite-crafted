@@ -6,7 +6,6 @@ import Sidebar from '@/components/Sidebar';
 import GameBoard from '@/components/GameBoard';
 import AdminPanel from '@/components/AdminPanel';
 import SettingsPanel from '@/components/SettingsPanel';
-import GiftModal from '@/components/GiftModal';
 import type { Element } from '@/lib/combinations';
 import { BASE_ELEMENTS } from '@/lib/combinations';
 import { combine } from '@/lib/gameLogic';
@@ -37,7 +36,6 @@ export default function Home() {
   const [hydrated, setHydrated] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [giftTarget, setGiftTarget] = useState<Element | null>(null);
   const [username, setUsername] = useState('');
   const [inboxCount, setInboxCount] = useState(0);
 
@@ -60,7 +58,6 @@ export default function Home() {
     setDiscovered(loadDiscovered());
     setBoardItems(loadBoard());
 
-    // Init username
     let stored = getStoredUsername();
     if (!stored) {
       stored = generateUsername();
@@ -141,7 +138,6 @@ export default function Home() {
         });
         setNewElements(prev => new Set(Array.from(prev).concat(result.result)));
 
-        // Check world-first discovery
         if (isSupabaseReady && username) {
           const isWorldFirst = await recordDiscovery(result.result, result.emoji, username);
           if (isWorldFirst) {
@@ -234,7 +230,6 @@ export default function Home() {
           elements={discovered}
           onSelect={handleSidebarSelect}
           newElements={newElements}
-          onGift={el => setGiftTarget(el)}
         />
       </div>
 
@@ -253,14 +248,6 @@ export default function Home() {
         username={username}
         onUsernameChange={handleUsernameChange}
         onClaimGift={handleClaimGift}
-      />
-
-      <GiftModal
-        open={!!giftTarget}
-        element={giftTarget}
-        fromUsername={username}
-        onClose={() => setGiftTarget(null)}
-        onSent={() => showToast('Gift sent!', '🎁')}
       />
 
       <AnimatePresence>

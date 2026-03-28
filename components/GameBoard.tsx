@@ -9,6 +9,7 @@ interface GameBoardProps {
   onItemsChange: (items: BoardItem[]) => void;
   onCombine: (a: BoardItem, b: BoardItem) => void;
   flashItem: string | null;
+  onItemClick?: (item: BoardItem) => void;
 }
 
 export default function GameBoard({
@@ -16,6 +17,7 @@ export default function GameBoard({
   onItemsChange,
   onCombine,
   flashItem,
+  onItemClick,
 }: GameBoardProps) {
   const dragging = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
   const itemsRef = useRef(items);
@@ -43,10 +45,20 @@ export default function GameBoard({
       ));
     };
 
-    const onUp = () => {
+    const onUp = (e: MouseEvent | TouchEvent) => {
       if (!dragging.current) return;
-      const released = itemsRef.current.find(i => i.id === dragging.current!.id);
+      const { id, startX, startY } = dragging.current;
+      const clientX = 'changedTouches' in e ? (e as TouchEvent).changedTouches[0].clientX : (e as MouseEvent).clientX;
+      const clientY = 'changedTouches' in e ? (e as TouchEvent).changedTouches[0].clientY : (e as MouseEvent).clientY;
+      const moved = Math.abs(clientX - startX) + Math.abs(clientY - startY);
+      const released = itemsRef.current.find(i => i.id === id);
       if (released && !released.isLoading) {
+        if (moved < 5 && onItemClick) {
+          // it's a click, not a drag
+          dragging.current = null;
+          onItemClick(released);
+          return;
+        }
         const THRESH = 60;
         const other = itemsRef.current.find(i =>
           i.id !== released.id &&

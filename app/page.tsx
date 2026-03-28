@@ -6,6 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import GameBoard from '@/components/GameBoard';
 import AdminPanel from '@/components/AdminPanel';
 import SettingsPanel from '@/components/SettingsPanel';
+import EverythingModal from '@/components/EverythingModal';
 import type { Element } from '@/lib/combinations';
 import { BASE_ELEMENTS } from '@/lib/combinations';
 import { combine } from '@/lib/gameLogic';
@@ -38,6 +39,7 @@ export default function Home() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [username, setUsername] = useState('');
   const [inboxCount, setInboxCount] = useState(0);
+  const [everythingItem, setEverythingItem] = useState<BoardItem | null>(null);
 
   // Secret key sequence listener
   useEffect(() => {
@@ -182,6 +184,20 @@ export default function Home() {
     showToast(`Added: ${el.name}`, el.emoji);
   }, []);
 
+  const handleBoardItemClick = useCallback((item: BoardItem) => {
+    if (item.element.name === 'EVERYTHING') {
+      setEverythingItem(item);
+    }
+  }, []);
+
+  const handleEverythingChoose = useCallback((el: Element) => {
+    if (!everythingItem) return;
+    setBoardItems(prev => prev.map(i =>
+      i.id === everythingItem.id ? { ...i, element: el } : i
+    ));
+    setEverythingItem(null);
+  }, [everythingItem]);
+
   const handleAdminRemove = useCallback((name: string) => {
     setDiscovered(prev => prev.filter(e => e.name !== name));
     setBoardItems(prev => prev.filter(i => i.element.name !== name));
@@ -224,6 +240,7 @@ export default function Home() {
             onItemsChange={setBoardItems}
             onCombine={handleCombine}
             flashItem={flashItem}
+            onItemClick={handleBoardItemClick}
           />
         </div>
         <Sidebar
@@ -248,6 +265,13 @@ export default function Home() {
         username={username}
         onUsernameChange={handleUsernameChange}
         onClaimGift={handleClaimGift}
+      />
+
+      <EverythingModal
+        open={!!everythingItem}
+        discovered={discovered}
+        onChoose={handleEverythingChoose}
+        onClose={() => setEverythingItem(null)}
       />
 
       <AnimatePresence>

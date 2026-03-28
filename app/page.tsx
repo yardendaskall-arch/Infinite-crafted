@@ -72,7 +72,6 @@ export default function Home() {
         (msg) => setCombineStatus(msg)
       );
 
-      // Remove a and b from board, add result
       const newItem: BoardItem = {
         id: genId(),
         element: { name: result.result, emoji: result.emoji },
@@ -93,14 +92,14 @@ export default function Home() {
           if (prev.find(e => e.name === result.result)) return prev;
           return [...prev, { name: result.result, emoji: result.emoji }];
         });
-        setNewElements(prev => new Set([...prev, result.result]));
+        setNewElements(prev => new Set(Array.from(prev).concat(result.result)));
         showToast(
-          `${result.source === 'neural' ? '🧠 Neural discovery' : '✨ First discovery'}: ${result.result}`,
+          `${result.source === 'neural' ? '\ud83e\udde0 Neural discovery' : '\u2728 First discovery'}: ${result.result}`,
           result.emoji
         );
         setTimeout(() => {
           setNewElements(prev => {
-            const next = new Set(prev);
+            const next = new Set(Array.from(prev));
             next.delete(result.result);
             return next;
           });
@@ -126,7 +125,6 @@ export default function Home() {
     <div className="flex flex-col h-full">
       <Header discoveredCount={discovered.length} onReset={handleReset} />
       <div className="flex flex-1 overflow-hidden">
-        {/* Board */}
         <div className="flex-1 relative" data-board="true">
           <GameBoard
             items={boardItems}
@@ -137,7 +135,6 @@ export default function Home() {
             flashItem={flashItem}
           />
         </div>
-        {/* Sidebar */}
         <Sidebar
           elements={discovered}
           selectedElement={selectedSidebar}
@@ -146,7 +143,6 @@ export default function Home() {
         />
       </div>
 
-      {/* Toast */}
       <AnimatePresence>
         {toast && (
           <motion.div

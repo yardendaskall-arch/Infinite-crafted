@@ -170,11 +170,6 @@ export default function WorldMap({ defeated, onEncounter, onClose, diamonds, pla
     top: (wy - c.y) * TILE_SIZE,
   });
 
-  // Current zone name
-  const nearestZone = MONSTER_POSITIONS.reduce<string>('', (acc, m) => {
-    if (!acc) return m.zone;
-    return acc;
-  });
   const playerZone = MONSTER_POSITIONS.find(m =>
     Math.abs(m.x - px) < 4 && Math.abs(m.y - py) < 3
   )?.zone ?? 'World Map';

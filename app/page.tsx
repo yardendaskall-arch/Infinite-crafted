@@ -5,6 +5,8 @@ import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import GameBoard from '@/components/GameBoard';
 import AdminPanel from '@/components/AdminPanel';
+import SettingsPanel from '@/components/SettingsPanel';
+import GiftModal from '@/components/GiftModal';
 import type { Element } from '@/lib/combinations';
 import { BASE_ELEMENTS } from '@/lib/combinations';
 import { combine } from '@/lib/gameLogic';
@@ -14,6 +16,12 @@ import {
   resetGame, genId,
 } from '@/lib/storage';
 import type { BoardItem } from '@/lib/storage';
+import {
+  generateUsername, getStoredUsername, storeUsername, registerUser,
+} from '@/lib/userService';
+import { recordDiscovery } from '@/lib/discoveryService';
+import { fetchGifts } from '@/lib/giftService';
+import { isSupabaseReady } from '@/lib/supabase';
 
 const SECRET = 'Ihatethisshit1';
 
@@ -28,11 +36,14 @@ export default function Home() {
   const [toast, setToast] = useState<{ msg: string; emoji: string } | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [giftTarget, setGiftTarget] = useState<Element | null>(null);
+  const [username, setUsername] = useState('');
+  const [inboxCount, setInboxCount] = useState(0);
 
   // Secret key sequence listener
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      // ignore when typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       keyBufferRef.current = (keyBufferRef.current + e.key).slice(-SECRET.length);
       if (keyBufferRef.current === SECRET) {
@@ -44,11 +55,32 @@ export default function Home() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // Hydrate game state + init username
   useEffect(() => {
     setDiscovered(loadDiscovered());
     setBoardItems(loadBoard());
+
+    // Init username
+    let stored = getStoredUsername();
+    if (!stored) {
+      stored = generateUsername();
+      storeUsername(stored);
+    }
+    setUsername(stored);
+    if (isSupabaseReady) {
+      registerUser(stored);
+      fetchGifts(stored).then(gifts => setInboxCount(gifts.length));
+    }
+
     setHydrated(true);
   }, []);
+
+  // Refresh inbox count when settings panel closes
+  useEffect(() => {
+    if (!settingsOpen && username && isSupabaseReady) {
+      fetchGifts(username).then(gifts => setInboxCount(gifts.length));
+    }
+  }, [settingsOpen, username]);
 
   useEffect(() => {
     if (hydrated) saveDiscovered(discovered);
@@ -86,7 +118,7 @@ export default function Home() {
 
     setBoardItems(prev => [
       ...prev.filter(i => i.id !== a.id && i.id !== b.id),
-      { id: placeholderId, element: { name: '...', emoji: '\u2728' }, x: mx, y: my, isLoading: true },
+      { id: placeholderId, element: { name: '...', emoji: '✨' }, x: mx, y: my, isLoading: true },
     ]);
 
     try {
@@ -108,7 +140,19 @@ export default function Home() {
           return [...prev, { name: result.result, emoji: result.emoji }];
         });
         setNewElements(prev => new Set(Array.from(prev).concat(result.result)));
-        showToast(`New Discovery! ${result.result}`, result.emoji);
+
+        // Check world-first discovery
+        if (isSupabaseReady && username) {
+          const isWorldFirst = await recordDiscovery(result.result, result.emoji, username);
+          if (isWorldFirst) {
+            showToast(`🌍 World First! ${result.result}`, result.emoji);
+          } else {
+            showToast(`New Discovery! ${result.result}`, result.emoji);
+          }
+        } else {
+          showToast(`New Discovery! ${result.result}`, result.emoji);
+        }
+
         setTimeout(() => {
           setNewElements(prev => {
             const next = new Set(Array.from(prev));
@@ -124,7 +168,7 @@ export default function Home() {
       setBoardItems(prev => prev.map(i => i.isLoading ? { ...i, isLoading: false } : i));
       combiningRef.current = false;
     }
-  }, [discovered]);
+  }, [discovered, username]);
 
   const handleReset = useCallback(() => {
     resetGame();
@@ -147,11 +191,36 @@ export default function Home() {
     setBoardItems(prev => prev.filter(i => i.element.name !== name));
   }, []);
 
+  const handleUsernameChange = useCallback((newName: string) => {
+    setUsername(newName);
+  }, []);
+
+  const handleClaimGift = useCallback((element: Element) => {
+    setDiscovered(prev => {
+      if (prev.find(e => e.name === element.name)) return prev;
+      return [...prev, element];
+    });
+    setNewElements(prev => new Set(Array.from(prev).concat(element.name)));
+    showToast(`Gift claimed: ${element.name}`, element.emoji);
+    setTimeout(() => {
+      setNewElements(prev => {
+        const next = new Set(Array.from(prev));
+        next.delete(element.name);
+        return next;
+      });
+    }, 8000);
+  }, []);
+
   if (!hydrated) return null;
 
   return (
     <div className="flex flex-col h-full">
-      <Header discoveredCount={discovered.length} onReset={handleReset} />
+      <Header
+        discoveredCount={discovered.length}
+        onReset={handleReset}
+        onOpenSettings={() => setSettingsOpen(true)}
+        inboxCount={inboxCount}
+      />
       <div className="flex flex-1 overflow-hidden">
         <div ref={boardRef} className="flex-1 relative">
           <GameBoard
@@ -165,6 +234,7 @@ export default function Home() {
           elements={discovered}
           onSelect={handleSidebarSelect}
           newElements={newElements}
+          onGift={el => setGiftTarget(el)}
         />
       </div>
 
@@ -174,6 +244,22 @@ export default function Home() {
         discovered={discovered}
         onAddElement={handleAdminAdd}
         onRemoveElement={handleAdminRemove}
+      />
+
+      <SettingsPanel
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        username={username}
+        onUsernameChange={handleUsernameChange}
+        onClaimGift={handleClaimGift}
+      />
+
+      <GiftModal
+        open={!!giftTarget}
+        element={giftTarget}
+        fromUsername={username}
+        onClose={() => setGiftTarget(null)}
+        onSent={() => showToast('Gift sent!', '🎁')}
       />
 
       <AnimatePresence>

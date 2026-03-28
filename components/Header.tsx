@@ -6,9 +6,11 @@ import ResetModal from './ResetModal';
 interface HeaderProps {
   discoveredCount: number;
   onReset: () => void;
+  onOpenSettings: () => void;
+  inboxCount?: number;
 }
 
-export default function Header({ discoveredCount, onReset }: HeaderProps) {
+export default function Header({ discoveredCount, onReset, onOpenSettings, inboxCount = 0 }: HeaderProps) {
   const [showModal, setShowModal] = useState(false);
 
   return (
@@ -32,6 +34,20 @@ export default function Header({ discoveredCount, onReset }: HeaderProps) {
             className="px-3 py-1.5 rounded-lg text-sm bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
           >
             Reset
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onOpenSettings}
+            className="relative w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors flex items-center justify-center text-base"
+            title="Settings"
+          >
+            ⚙️
+            {inboxCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-[#e94560] text-white text-xs rounded-full w-4 h-4 flex items-center justify-center leading-none">
+                {inboxCount}
+              </span>
+            )}
           </motion.button>
         </div>
       </header>

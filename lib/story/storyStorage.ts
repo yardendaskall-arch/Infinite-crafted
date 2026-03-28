@@ -1,6 +1,6 @@
 const DIAMONDS_KEY = 'ic_diamonds';
 const RECIPES_KEY = 'ic_unlocked_recipes';
-const WAVE_KEY = 'ic_story_wave';
+const DEFEATED_KEY = 'ic_defeated_monsters';
 
 export function getDiamonds(): number {
   if (typeof window === 'undefined') return 0;
@@ -33,15 +33,22 @@ export function unlockRecipe(id: string): void {
   }
 }
 
-export function getStoryWave(): number {
-  if (typeof window === 'undefined') return 0;
-  return parseInt(localStorage.getItem(WAVE_KEY) || '0', 10);
+export function getDefeatedMonsters(): string[] {
+  if (typeof window === 'undefined') return [];
+  try { return JSON.parse(localStorage.getItem(DEFEATED_KEY) || '[]'); }
+  catch { return []; }
 }
 
-export function saveStoryWave(wave: number): void {
-  localStorage.setItem(WAVE_KEY, String(wave));
+export function addDefeatedMonster(id: string): void {
+  const current = getDefeatedMonsters();
+  if (!current.includes(id)) {
+    localStorage.setItem(DEFEATED_KEY, JSON.stringify([...current, id]));
+  }
 }
 
 export function resetStory(): void {
-  localStorage.removeItem(WAVE_KEY);
+  localStorage.removeItem(DEFEATED_KEY);
+  localStorage.removeItem(DIAMONDS_KEY);
+  localStorage.removeItem(RECIPES_KEY);
 }
+

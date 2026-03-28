@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { Element } from '@/lib/combinations';
+import { COMBINATIONS, BASE_ELEMENTS, type Element } from '@/lib/combinations';
 import { MONSTERS, type Monster } from '@/lib/story/monsters';
 import { SHOP_RECIPES, ELEMENT_DAMAGE, DEFAULT_DAMAGE } from '@/lib/story/weapons';
 import {
@@ -11,6 +11,29 @@ import {
 } from '@/lib/story/storyStorage';
 import { combine } from '@/lib/gameLogic';
 import WorldMap, { MONSTER_POSITIONS } from '@/components/story/WorldMap';
+
+// ── Recipe tree helpers ──────────────────────────────────────────────────────
+const _BASE = new Set(BASE_ELEMENTS.map(e => e.name.toLowerCase()));
+const _REV: Record<string, { a: string; b: string; result: string; emoji: string }> = {};
+for (const [key, val] of Object.entries(COMBINATIONS)) {
+  const lower = val.result.toLowerCase();
+  if (!_REV[lower]) {
+    const [a, b] = key.split('+');
+    _REV[lower] = { a, b, result: val.result, emoji: val.emoji };
+  }
+}
+interface RecipeStep { result: string; emoji: string; a: string; b: string }
+function cap(s: string) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function getRecipeSteps(name: string, visited = new Set<string>()): RecipeStep[] {
+  const lower = name.toLowerCase();
+  if (visited.has(lower) || _BASE.has(lower)) return [];
+  visited.add(lower);
+  const r = _REV[lower];
+  if (!r) return [];
+  return [...getRecipeSteps(r.a, visited), ...getRecipeSteps(r.b, visited),
+    { result: r.result, emoji: r.emoji, a: cap(r.a), b: cap(r.b) }];
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface Props {
   open: boolean;
@@ -278,6 +301,7 @@ export default function StoryMode({ open, onClose, discovered, onNewElement }: P
                 <div className="flex-1 overflow-y-auto p-3 space-y-2">
                   {SHOP_RECIPES.map(recipe => {
                     const owned = unlockedRecipes.includes(recipe.id);
+                    const steps = owned ? getRecipeSteps(recipe.name) : [];
                     return (
                       <div key={recipe.id} className={`p-3 rounded-xl border ${owned ? 'border-green-500/30 bg-green-500/5' : 'border-white/10 bg-white/3'}`}>
                         <div className="flex items-start gap-2">
@@ -285,7 +309,6 @@ export default function StoryMode({ open, onClose, discovered, onNewElement }: P
                             <p className="text-white text-sm font-semibold">{recipe.emoji} {recipe.name}</p>
                             <p className="text-white/30 text-xs mt-0.5 leading-4">{recipe.description}</p>
                             <p className="text-white/20 text-xs mt-1">⚔️ {recipe.damage} dmg</p>
-                            {owned && <p className="text-green-400 text-xs mt-1">{recipe.ingredientA} + {recipe.ingredientB}</p>}
                           </div>
                           {owned ? (
                             <span className="text-green-400 text-xs shrink-0">✓</span>
@@ -299,6 +322,29 @@ export default function StoryMode({ open, onClose, discovered, onNewElement }: P
                             </button>
                           )}
                         </div>
+                        {owned && (
+                          <div className="mt-2.5 pt-2 border-t border-white/5 space-y-1">
+                            <p className="text-white/30 text-[10px] uppercase tracking-wider mb-1">Crafting chain</p>
+                            {steps.map((step, i) => (
+                              <div key={i} className="flex items-center gap-1 text-xs">
+                                <span className="text-white/20 w-3 text-right shrink-0">{i + 1}.</span>
+                                <span className="text-white/40">{step.a}</span>
+                                <span className="text-white/20">+</span>
+                                <span className="text-white/40">{step.b}</span>
+                                <span className="text-white/20 mx-1">→</span>
+                                <span className="text-green-300/80">{step.emoji} {step.result}</span>
+                              </div>
+                            ))}
+                            <div className="flex items-center gap-1 text-xs mt-1">
+                              <span className="text-white/20 w-3 text-right shrink-0">{steps.length + 1}.</span>
+                              <span className="text-white/40">{recipe.ingredientA}</span>
+                              <span className="text-white/20">+</span>
+                              <span className="text-white/40">{recipe.ingredientB}</span>
+                              <span className="text-white/20 mx-1">→</span>
+                              <span className="text-yellow-300/90 font-semibold">{recipe.emoji} {recipe.name}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -570,13 +616,13 @@ export default function StoryMode({ open, onClose, discovered, onNewElement }: P
                   <div className="flex-1 overflow-y-auto p-3 space-y-2">
                     {SHOP_RECIPES.map(recipe => {
                       const owned = unlockedRecipes.includes(recipe.id);
+                      const steps = owned ? getRecipeSteps(recipe.name) : [];
                       return (
                         <div key={recipe.id} className={`p-3 rounded-xl border ${owned ? 'border-green-500/30 bg-green-500/5' : 'border-white/10 bg-white/3'}`}>
                           <div className="flex items-start gap-2">
                             <div className="flex-1 min-w-0">
                               <p className="text-white text-sm font-semibold">{recipe.emoji} {recipe.name}</p>
                               <p className="text-white/30 text-xs mt-0.5 leading-4">{recipe.description}</p>
-                              {owned && <p className="text-green-400 text-xs mt-1">{recipe.ingredientA} + {recipe.ingredientB}</p>}
                             </div>
                             {owned ? <span className="text-green-400 text-xs shrink-0">✓</span> : (
                               <button onClick={() => handleBuy(recipe)} disabled={diamonds < recipe.cost}
@@ -585,6 +631,29 @@ export default function StoryMode({ open, onClose, discovered, onNewElement }: P
                               </button>
                             )}
                           </div>
+                          {owned && (
+                            <div className="mt-2.5 pt-2 border-t border-white/5 space-y-1">
+                              <p className="text-white/30 text-[10px] uppercase tracking-wider mb-1">Crafting chain</p>
+                              {steps.map((step, i) => (
+                                <div key={i} className="flex items-center gap-1 text-xs">
+                                  <span className="text-white/20 w-3 text-right shrink-0">{i + 1}.</span>
+                                  <span className="text-white/40">{step.a}</span>
+                                  <span className="text-white/20">+</span>
+                                  <span className="text-white/40">{step.b}</span>
+                                  <span className="text-white/20 mx-1">→</span>
+                                  <span className="text-green-300/80">{step.emoji} {step.result}</span>
+                                </div>
+                              ))}
+                              <div className="flex items-center gap-1 text-xs mt-1">
+                                <span className="text-white/20 w-3 text-right shrink-0">{steps.length + 1}.</span>
+                                <span className="text-white/40">{recipe.ingredientA}</span>
+                                <span className="text-white/20">+</span>
+                                <span className="text-white/40">{recipe.ingredientB}</span>
+                                <span className="text-white/20 mx-1">→</span>
+                                <span className="text-yellow-300/90 font-semibold">{recipe.emoji} {recipe.name}</span>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}

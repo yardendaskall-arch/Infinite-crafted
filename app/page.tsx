@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
@@ -15,9 +15,9 @@ import {
 import type { BoardItem } from '@/lib/storage';
 
 export default function Home() {
+  const boardRef = useRef<HTMLDivElement>(null);
   const [discovered, setDiscovered] = useState<Element[]>([]);
   const [boardItems, setBoardItems] = useState<BoardItem[]>([]);
-  const [selectedSidebar, setSelectedSidebar] = useState<Element | null>(null);
   const [combining, setCombining] = useState(false);
   const [combineStatus, setCombineStatus] = useState('Thinking...');
   const [newElements, setNewElements] = useState<Set<string>>(new Set());
@@ -45,16 +45,15 @@ export default function Home() {
   };
 
   const addToBoard = useCallback((el: Element) => {
-    const board = document.querySelector('[data-board]');
-    const rect = board?.getBoundingClientRect();
-    const x = rect ? Math.random() * (rect.width - 160) + 40 : 200;
-    const y = rect ? Math.random() * (rect.height - 80) + 40 : 200;
+    const rect = boardRef.current?.getBoundingClientRect();
+    const w = rect?.width ?? 600;
+    const h = rect?.height ?? 400;
+    const x = Math.random() * Math.max(w - 180, 80) + 20;
+    const y = Math.random() * Math.max(h - 80, 80) + 20;
     setBoardItems(prev => [...prev, { id: genId(), element: el, x, y }]);
-    setSelectedSidebar(null);
   }, []);
 
   const handleSidebarSelect = useCallback((el: Element) => {
-    setSelectedSidebar(prev => prev?.name === el.name ? null : el);
     addToBoard(el);
   }, [addToBoard]);
 
@@ -125,7 +124,7 @@ export default function Home() {
     <div className="flex flex-col h-full">
       <Header discoveredCount={discovered.length} onReset={handleReset} />
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex-1 relative" data-board="true">
+        <div ref={boardRef} className="flex-1 relative">
           <GameBoard
             items={boardItems}
             onItemsChange={setBoardItems}
@@ -137,7 +136,6 @@ export default function Home() {
         </div>
         <Sidebar
           elements={discovered}
-          selectedElement={selectedSidebar}
           onSelect={handleSidebarSelect}
           newElements={newElements}
         />

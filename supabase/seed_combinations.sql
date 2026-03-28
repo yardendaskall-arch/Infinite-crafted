@@ -1,5 +1,21 @@
 -- Seed all hardcoded combinations into the combinations table
--- Run this in your Supabase SQL editor AFTER schema.sql
+-- This file is self-contained: creates the table if needed, then seeds it.
+
+create table if not exists public.combinations (
+  combo_key text primary key,
+  result text not null,
+  emoji text not null
+);
+
+alter table public.combinations enable row level security;
+
+drop policy if exists "allow_read_combinations" on public.combinations;
+drop policy if exists "allow_insert_combinations" on public.combinations;
+drop policy if exists "allow_update_combinations" on public.combinations;
+
+create policy "allow_read_combinations" on public.combinations for select using (true);
+create policy "allow_insert_combinations" on public.combinations for insert with check (true);
+create policy "allow_update_combinations" on public.combinations for update using (true);
 
 insert into public.combinations (combo_key, result, emoji) values
 -- Base

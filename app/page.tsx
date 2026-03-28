@@ -93,7 +93,7 @@ export default function Home() {
         });
         setNewElements(prev => new Set(Array.from(prev).concat(result.result)));
         showToast(
-          `${result.source === 'neural' ? '\ud83e\udde0 Neural discovery' : '\u2728 First discovery'}: ${result.result}`,
+          `${result.source === 'llama' ? '\ud83e\udde0 Llama discovery' : '\u2728 First discovery'}: ${result.result}`,
           result.emoji
         );
         setTimeout(() => {

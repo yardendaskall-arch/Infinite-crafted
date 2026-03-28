@@ -16,7 +16,7 @@ import type { BoardItem } from '@/lib/storage';
 
 export default function Home() {
   const boardRef = useRef<HTMLDivElement>(null);
-  const combiningRef = useRef(false); // mutex — no re-render needed
+  const combiningRef = useRef(false);
   const [discovered, setDiscovered] = useState<Element[]>([]);
   const [boardItems, setBoardItems] = useState<BoardItem[]>([]);
   const [newElements, setNewElements] = useState<Set<string>>(new Set());
@@ -64,6 +64,7 @@ export default function Home() {
     const mx = (a.x + b.x) / 2;
     const my = (a.y + b.y) / 2;
 
+    // Remove source items, add loading placeholder
     setBoardItems(prev => [
       ...prev.filter(i => i.id !== a.id && i.id !== b.id),
       { id: placeholderId, element: { name: '...', emoji: '\u2728' }, x: mx, y: my, isLoading: true },
@@ -73,19 +74,15 @@ export default function Home() {
       const discoveredNames = discovered.map(e => e.name);
       const result = await combine(a.element.name, b.element.name, discoveredNames);
 
-      const newItem: BoardItem = {
-        id: genId(),
-        element: { name: result.result, emoji: result.emoji },
-        x: mx,
-        y: my,
-      };
+      // Update placeholder IN-PLACE (same id/key) so framer-motion
+      // transitions smoothly instead of fighting an exit animation
+      setBoardItems(prev => prev.map(i =>
+        i.id === placeholderId
+          ? { ...i, element: { name: result.result, emoji: result.emoji }, isLoading: false }
+          : i
+      ));
 
-      setBoardItems(prev => [
-        ...prev.filter(i => i.id !== placeholderId),
-        newItem,
-      ]);
-
-      setFlashItem(newItem.id);
+      setFlashItem(placeholderId);
       setTimeout(() => setFlashItem(null), 600);
 
       if (result.isNew) {
@@ -105,10 +102,11 @@ export default function Home() {
       }
     } catch (err) {
       console.error(err);
+      // Remove placeholder on error
       setBoardItems(prev => prev.filter(i => i.id !== placeholderId));
     } finally {
-      // Always nuke any leftover loading placeholders
-      setBoardItems(prev => prev.filter(i => !i.isLoading));
+      // Ensure no loading items linger
+      setBoardItems(prev => prev.map(i => i.isLoading ? { ...i, isLoading: false } : i));
       combiningRef.current = false;
     }
   }, [discovered]);

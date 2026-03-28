@@ -87,10 +87,7 @@ export default function Home() {
           return [...prev, { name: result.result, emoji: result.emoji }];
         });
         setNewElements(prev => new Set(Array.from(prev).concat(result.result)));
-        showToast(
-          `${result.source === 'llama' ? '\ud83e\udde0 Llama discovery' : '\u2728 First discovery'}: ${result.result}`,
-          result.emoji
-        );
+        showToast(`New Discovery! ${result.result}`, result.emoji);
         setTimeout(() => {
           setNewElements(prev => {
             const next = new Set(Array.from(prev));

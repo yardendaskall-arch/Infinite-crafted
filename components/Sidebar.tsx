@@ -6,12 +6,11 @@ import ElementTile from './ElementTile';
 
 interface SidebarProps {
   elements: Element[];
-  selectedElement: Element | null;
   onSelect: (el: Element) => void;
   newElements: Set<string>;
 }
 
-export default function Sidebar({ elements, selectedElement, onSelect, newElements }: SidebarProps) {
+export default function Sidebar({ elements, onSelect, newElements }: SidebarProps) {
   const [search, setSearch] = useState('');
 
   const filtered = elements.filter(e =>
@@ -40,7 +39,6 @@ export default function Sidebar({ elements, selectedElement, onSelect, newElemen
                 key={el.name}
                 element={el}
                 onClick={() => onSelect(el)}
-                selected={selectedElement?.name === el.name}
                 small
                 isNew={newElements.has(el.name)}
               />

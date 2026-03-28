@@ -9,6 +9,7 @@ export interface BoardItem {
   element: Element;
   x: number;
   y: number;
+  isLoading?: boolean;
 }
 
 export function loadDiscovered(): Element[] {
@@ -32,7 +33,8 @@ export function loadBoard(): BoardItem[] {
   try {
     const raw = localStorage.getItem(BOARD_KEY);
     if (!raw) return [];
-    return JSON.parse(raw);
+    // Strip any persisted loading items
+    return (JSON.parse(raw) as BoardItem[]).filter(i => !i.isLoading);
   } catch {
     return [];
   }
@@ -40,7 +42,7 @@ export function loadBoard(): BoardItem[] {
 
 export function saveBoard(items: BoardItem[]): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(BOARD_KEY, JSON.stringify(items));
+  localStorage.setItem(BOARD_KEY, JSON.stringify(items.filter(i => !i.isLoading)));
 }
 
 export function resetGame(): void {

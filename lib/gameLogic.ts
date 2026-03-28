@@ -1,20 +1,19 @@
 import { getCombination } from './combinations';
-import { neuralCombine } from './neuralCombiner';
+import { pickEmoji } from './emoji';
 
 export interface CombineResult {
   result: string;
   emoji: string;
   isNew: boolean;
-  source: 'database' | 'neural';
+  source: 'database' | 'llama';
 }
 
 export async function combine(
   a: string,
   b: string,
   discovered: string[],
-  onProgress?: (msg: string) => void
 ): Promise<CombineResult> {
-  // 1. Check pre-computed database first
+  // 1. Pre-computed database (instant)
   const db = getCombination(a, b);
   if (db) {
     return {
@@ -25,18 +24,25 @@ export async function combine(
     };
   }
 
-  // 2. Same element combined with itself — just return it
+  // 2. Same element
   if (a.toLowerCase() === b.toLowerCase()) {
-    return { result: a, emoji: '✨', isNew: false, source: 'database' };
+    return { result: a, emoji: pickEmoji(a), isNew: false, source: 'database' };
   }
 
-  // 3. Neural network fallback
-  onProgress?.('Thinking...');
-  const neural = await neuralCombine(a, b, onProgress);
+  // 3. Llama via Groq
+  const res = await fetch('/api/combine', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ element1: a, element2: b }),
+  });
+
+  const data = await res.json();
+  const result: string = data.result ?? 'Mystery';
+
   return {
-    result: neural.result,
-    emoji: neural.emoji,
-    isNew: !discovered.includes(neural.result),
-    source: 'neural',
+    result,
+    emoji: pickEmoji(result),
+    isNew: !discovered.includes(result),
+    source: 'llama',
   };
 }

@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import GameBoard from '@/components/GameBoard';
+import AdminPanel from '@/components/AdminPanel';
 import type { Element } from '@/lib/combinations';
 import { BASE_ELEMENTS } from '@/lib/combinations';
 import { combine } from '@/lib/gameLogic';
@@ -14,15 +15,34 @@ import {
 } from '@/lib/storage';
 import type { BoardItem } from '@/lib/storage';
 
+const SECRET = 'Ihatethisshit1';
+
 export default function Home() {
   const boardRef = useRef<HTMLDivElement>(null);
   const combiningRef = useRef(false);
+  const keyBufferRef = useRef('');
   const [discovered, setDiscovered] = useState<Element[]>([]);
   const [boardItems, setBoardItems] = useState<BoardItem[]>([]);
   const [newElements, setNewElements] = useState<Set<string>>(new Set());
   const [flashItem, setFlashItem] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; emoji: string } | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
+
+  // Secret key sequence listener
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // ignore when typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      keyBufferRef.current = (keyBufferRef.current + e.key).slice(-SECRET.length);
+      if (keyBufferRef.current === SECRET) {
+        setAdminOpen(prev => !prev);
+        keyBufferRef.current = '';
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   useEffect(() => {
     setDiscovered(loadDiscovered());
@@ -64,7 +84,6 @@ export default function Home() {
     const mx = (a.x + b.x) / 2;
     const my = (a.y + b.y) / 2;
 
-    // Remove source items, add loading placeholder
     setBoardItems(prev => [
       ...prev.filter(i => i.id !== a.id && i.id !== b.id),
       { id: placeholderId, element: { name: '...', emoji: '\u2728' }, x: mx, y: my, isLoading: true },
@@ -74,8 +93,6 @@ export default function Home() {
       const discoveredNames = discovered.map(e => e.name);
       const result = await combine(a.element.name, b.element.name, discoveredNames);
 
-      // Update placeholder IN-PLACE (same id/key) so framer-motion
-      // transitions smoothly instead of fighting an exit animation
       setBoardItems(prev => prev.map(i =>
         i.id === placeholderId
           ? { ...i, element: { name: result.result, emoji: result.emoji }, isLoading: false }
@@ -102,10 +119,8 @@ export default function Home() {
       }
     } catch (err) {
       console.error(err);
-      // Remove placeholder on error
       setBoardItems(prev => prev.filter(i => i.id !== placeholderId));
     } finally {
-      // Ensure no loading items linger
       setBoardItems(prev => prev.map(i => i.isLoading ? { ...i, isLoading: false } : i));
       combiningRef.current = false;
     }
@@ -116,6 +131,20 @@ export default function Home() {
     setDiscovered([...BASE_ELEMENTS]);
     setBoardItems([]);
     setNewElements(new Set());
+  }, []);
+
+  const handleAdminAdd = useCallback((el: Element) => {
+    setDiscovered(prev => {
+      if (prev.find(e => e.name === el.name)) return prev;
+      return [...prev, el];
+    });
+    setNewElements(prev => new Set(Array.from(prev).concat(el.name)));
+    showToast(`Added: ${el.name}`, el.emoji);
+  }, []);
+
+  const handleAdminRemove = useCallback((name: string) => {
+    setDiscovered(prev => prev.filter(e => e.name !== name));
+    setBoardItems(prev => prev.filter(i => i.element.name !== name));
   }, []);
 
   if (!hydrated) return null;
@@ -138,6 +167,14 @@ export default function Home() {
           newElements={newElements}
         />
       </div>
+
+      <AdminPanel
+        open={adminOpen}
+        onClose={() => setAdminOpen(false)}
+        discovered={discovered}
+        onAddElement={handleAdminAdd}
+        onRemoveElement={handleAdminRemove}
+      />
 
       <AnimatePresence>
         {toast && (

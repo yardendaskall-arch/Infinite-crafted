@@ -244,6 +244,7 @@ export default function Home() {
         discovered={discovered}
         onAddElement={handleAdminAdd}
         onRemoveElement={handleAdminRemove}
+        username={username}
       />
 
       <SettingsPanel

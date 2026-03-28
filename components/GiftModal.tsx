@@ -79,7 +79,7 @@ export default function GiftModal({ open, element, fromUsername, onClose, onSent
                   value={recipient}
                   onChange={e => { setRecipient(e.target.value); setError(''); }}
                   onKeyDown={e => e.key === 'Enter' && handleSend()}
-                  placeholder="Recipient username..."
+                  placeholder="Recipient's username..."
                   autoFocus
                   className="w-full bg-white/10 text-white placeholder-white/30 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-[#e94560]/60 mb-2"
                 />

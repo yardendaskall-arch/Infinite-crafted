@@ -1,4 +1,16 @@
 -- Run this in your Supabase SQL editor
+-- Also run supabase/seed_combinations.sql after this to seed all hardcoded recipes
+
+create table if not exists public.combinations (
+  combo_key text primary key,
+  result text not null,
+  emoji text not null
+);
+
+alter table public.combinations enable row level security;
+create policy "allow_read_combinations" on public.combinations for select using (true);
+create policy "allow_insert_combinations" on public.combinations for insert with check (true);
+create policy "allow_update_combinations" on public.combinations for update using (true);
 
 create table if not exists public.users (
   username text primary key,

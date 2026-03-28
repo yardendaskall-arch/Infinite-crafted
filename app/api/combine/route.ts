@@ -1,10 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
+import { getCombination } from '@/lib/combinations';
+import { createClient } from '@supabase/supabase-js';
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function POST(req: NextRequest) {
   const { element1, element2 } = await req.json();
+
+  // 1. Check hardcoded combinations first (server-side, AI cannot override)
+  const hardcoded = getCombination(element1, element2);
+  if (hardcoded) {
+    return NextResponse.json({ result: hardcoded.result, emoji: hardcoded.emoji });
+  }
+
+  // 2. Check Supabase combinations table
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (url && key) {
+    const supabase = createClient(url, key);
+    const keys = [
+      [element1.toLowerCase(), element2.toLowerCase()].sort().join('+'),
+    ];
+    const { data } = await supabase
+      .from('combinations')
+      .select('result, emoji')
+      .eq('combo_key', keys[0])
+      .single();
+    if (data) {
+      return NextResponse.json({ result: data.result, emoji: data.emoji });
+    }
+  }
 
   if (!process.env.GROQ_API_KEY) {
     return NextResponse.json(
@@ -13,6 +39,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // 3. Fall back to AI
   try {
     const completion = await groq.chat.completions.create({
       model: 'meta-llama/llama-4-scout-17b-16e-instruct',
@@ -32,7 +59,6 @@ export async function POST(req: NextRequest) {
     });
 
     const raw = completion.choices[0]?.message?.content?.trim() ?? 'Mystery';
-    // Strip leading "= " if model echoes it, keep only first line, strip non-word chars
     const result = raw
       .replace(/^=\s*/, '')
       .split('\n')[0]

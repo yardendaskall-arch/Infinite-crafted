@@ -7,10 +7,11 @@ interface HeaderProps {
   discoveredCount: number;
   onReset: () => void;
   onOpenSettings: () => void;
+  onOpenStory: () => void;
   inboxCount?: number;
 }
 
-export default function Header({ discoveredCount, onReset, onOpenSettings, inboxCount = 0 }: HeaderProps) {
+export default function Header({ discoveredCount, onReset, onOpenSettings, onOpenStory, inboxCount = 0 }: HeaderProps) {
   const [showModal, setShowModal] = useState(false);
 
   return (
@@ -27,6 +28,14 @@ export default function Header({ discoveredCount, onReset, onOpenSettings, inbox
           <div className="text-sm text-white/60">
             <span className="text-white font-semibold">{discoveredCount}</span> discovered
           </div>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onOpenStory}
+            className="px-3 py-1.5 rounded-lg text-sm bg-[#e94560]/20 hover:bg-[#e94560]/30 text-[#e94560] hover:text-[#ff6b82] border border-[#e94560]/30 font-medium transition-colors"
+          >
+            ⚔️ Story
+          </motion.button>
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}

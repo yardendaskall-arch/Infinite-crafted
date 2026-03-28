@@ -330,6 +330,16 @@ export const COMBINATIONS: Record<string, { result: string; emoji: string }> = {
   'phoenix+water': { result: 'Mist', emoji: '🌫️' },
   'earth+fossil': { result: 'Archaeology', emoji: '🦴' },
   'fossil+fire': { result: 'Oil', emoji: '🛢️' },
+  // ── Story Mode Weapons (hardcoded – AI must not override these) ──
+  'lightning+sword': { result: 'Thunder Blade', emoji: '⚡⚔️' },
+  'ash+sword': { result: 'Shadow Blade', emoji: '🌑⚔️' },
+  'magic+sword': { result: 'Holy Sword', emoji: '✨⚔️' },
+  'dragon+sword': { result: 'Dragon Slayer', emoji: '🐉⚔️' },
+  'ash+charcoal': { result: 'Gunpowder', emoji: '💥' },
+  'gunpowder+metal': { result: 'Gun', emoji: '🔫' },
+  'gun+telescope': { result: 'Sniper Rifle', emoji: '🎯' },
+  'gun+magic': { result: 'Magic Gun', emoji: '✨🔫' },
+  'metal+shield': { result: 'Steel Shield', emoji: '🛡️' },
 };
 
 export function getCombination(a: string, b: string): { result: string; emoji: string } | null {

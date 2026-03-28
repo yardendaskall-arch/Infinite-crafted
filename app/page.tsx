@@ -7,6 +7,7 @@ import GameBoard from '@/components/GameBoard';
 import AdminPanel from '@/components/AdminPanel';
 import SettingsPanel from '@/components/SettingsPanel';
 import EverythingModal from '@/components/EverythingModal';
+import StoryMode from '@/components/StoryMode';
 import type { Element } from '@/lib/combinations';
 import { BASE_ELEMENTS } from '@/lib/combinations';
 import { combine } from '@/lib/gameLogic';
@@ -40,6 +41,7 @@ export default function Home() {
   const [username, setUsername] = useState('');
   const [inboxCount, setInboxCount] = useState(0);
   const [everythingItem, setEverythingItem] = useState<BoardItem | null>(null);
+  const [storyOpen, setStoryOpen] = useState(false);
 
   // Secret key sequence listener
   useEffect(() => {
@@ -231,6 +233,7 @@ export default function Home() {
         discoveredCount={discovered.length}
         onReset={handleReset}
         onOpenSettings={() => setSettingsOpen(true)}
+        onOpenStory={() => setStoryOpen(true)}
         inboxCount={inboxCount}
       />
       <div className="flex flex-1 overflow-hidden">
@@ -272,6 +275,23 @@ export default function Home() {
         discovered={discovered}
         onChoose={handleEverythingChoose}
         onClose={() => setEverythingItem(null)}
+      />
+
+      <StoryMode
+        open={storyOpen}
+        onClose={() => setStoryOpen(false)}
+        discovered={discovered}
+        onNewElement={el => {
+          setDiscovered(prev => {
+            if (prev.find(e => e.name === el.name)) return prev;
+            return [...prev, el];
+          });
+          setNewElements(prev => new Set(Array.from(prev).concat(el.name)));
+          showToast(`New Discovery! ${el.name}`, el.emoji);
+          setTimeout(() => {
+            setNewElements(prev => { const n = new Set(Array.from(prev)); n.delete(el.name); return n; });
+          }, 8000);
+        }}
       />
 
       <AnimatePresence>

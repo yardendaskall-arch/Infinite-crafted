@@ -16,6 +16,7 @@ import type { BoardItem } from '@/lib/storage';
 
 export default function Home() {
   const boardRef = useRef<HTMLDivElement>(null);
+  const combiningRef = useRef(false); // mutex — no re-render needed
   const [discovered, setDiscovered] = useState<Element[]>([]);
   const [boardItems, setBoardItems] = useState<BoardItem[]>([]);
   const [newElements, setNewElements] = useState<Set<string>>(new Set());
@@ -56,15 +57,16 @@ export default function Home() {
   }, [addToBoard]);
 
   const handleCombine = useCallback(async (a: BoardItem, b: BoardItem) => {
-    // Create a pulsing placeholder immediately where the two items merged
+    if (combiningRef.current) return;
+    combiningRef.current = true;
+
     const placeholderId = genId();
     const mx = (a.x + b.x) / 2;
     const my = (a.y + b.y) / 2;
 
-    // Remove both source items and add placeholder in one update
     setBoardItems(prev => [
       ...prev.filter(i => i.id !== a.id && i.id !== b.id),
-      { id: placeholderId, element: { name: '...', emoji: '✨' }, x: mx, y: my, isLoading: true },
+      { id: placeholderId, element: { name: '...', emoji: '\u2728' }, x: mx, y: my, isLoading: true },
     ]);
 
     try {
@@ -78,7 +80,6 @@ export default function Home() {
         y: my,
       };
 
-      // Swap placeholder for result
       setBoardItems(prev => [
         ...prev.filter(i => i.id !== placeholderId),
         newItem,
@@ -104,8 +105,11 @@ export default function Home() {
       }
     } catch (err) {
       console.error(err);
-      // On error remove placeholder
       setBoardItems(prev => prev.filter(i => i.id !== placeholderId));
+    } finally {
+      // Always nuke any leftover loading placeholders
+      setBoardItems(prev => prev.filter(i => !i.isLoading));
+      combiningRef.current = false;
     }
   }, [discovered]);
 

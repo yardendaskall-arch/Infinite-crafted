@@ -12,7 +12,6 @@ export async function combine(
   a: string,
   b: string,
   discovered: string[],
-  onProgress?: (msg: string) => void
 ): Promise<CombineResult> {
   // 1. Pre-computed database (instant)
   const db = getCombination(a, b);
@@ -31,7 +30,6 @@ export async function combine(
   }
 
   // 3. Llama via Groq
-  onProgress?.('Asking Llama...');
   const res = await fetch('/api/combine', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

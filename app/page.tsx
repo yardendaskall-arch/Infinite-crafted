@@ -19,7 +19,7 @@ export default function Home() {
   const [discovered, setDiscovered] = useState<Element[]>([]);
   const [boardItems, setBoardItems] = useState<BoardItem[]>([]);
   const [combining, setCombining] = useState(false);
-  const [combineStatus, setCombineStatus] = useState('Thinking...');
+  const [combiningIds, setCombiningIds] = useState<[string, string] | null>(null);
   const [newElements, setNewElements] = useState<Set<string>>(new Set());
   const [flashItem, setFlashItem] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; emoji: string } | null>(null);
@@ -60,16 +60,11 @@ export default function Home() {
   const handleCombine = useCallback(async (a: BoardItem, b: BoardItem) => {
     if (combining) return;
     setCombining(true);
-    setCombineStatus('Thinking...');
+    setCombiningIds([a.id, b.id]);
 
     try {
       const discoveredNames = discovered.map(e => e.name);
-      const result = await combine(
-        a.element.name,
-        b.element.name,
-        discoveredNames,
-        (msg) => setCombineStatus(msg)
-      );
+      const result = await combine(a.element.name, b.element.name, discoveredNames);
 
       const newItem: BoardItem = {
         id: genId(),
@@ -108,6 +103,7 @@ export default function Home() {
       console.error(err);
     } finally {
       setCombining(false);
+      setCombiningIds(null);
     }
   }, [combining, discovered]);
 
@@ -130,7 +126,7 @@ export default function Home() {
             onItemsChange={setBoardItems}
             onCombine={handleCombine}
             combining={combining}
-            combineStatus={combineStatus}
+            combiningIds={combiningIds}
             flashItem={flashItem}
           />
         </div>

@@ -9,7 +9,7 @@ interface GameBoardProps {
   onItemsChange: (items: BoardItem[]) => void;
   onCombine: (a: BoardItem, b: BoardItem) => void;
   combining: boolean;
-  combineStatus: string;
+  combiningIds: [string, string] | null;
   flashItem: string | null;
 }
 
@@ -18,7 +18,7 @@ export default function GameBoard({
   onItemsChange,
   onCombine,
   combining,
-  combineStatus,
+  combiningIds,
   flashItem,
 }: GameBoardProps) {
   const dragging = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
@@ -98,52 +98,48 @@ export default function GameBoard({
       )}
 
       <AnimatePresence>
-        {combining && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-black/80 backdrop-blur-sm text-white text-sm px-4 py-2 rounded-full border border-white/20 flex items-center gap-2"
-          >
-            <span className="animate-spin inline-block">⚙️</span>
-            <span>{combineStatus}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {items.map(item => (
-          <motion.div
-            key={item.id}
-            initial={{ scale: 0.4, opacity: 0 }}
-            animate={{
-              scale: flashItem === item.id ? [1, 1.35, 1] : 1,
-              opacity: 1,
-            }}
-            exit={{ scale: 0.4, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 22 }}
-            style={{
-              position: 'absolute',
-              left: item.x,
-              top: item.y,
-              cursor: 'grab',
-              userSelect: 'none',
-              touchAction: 'none',
-            }}
-            onMouseDown={e => startDrag(e, item.id)}
-            onTouchStart={e => startDrag(e, item.id)}
-          >
-            <div className="relative group">
-              <ElementTile element={item.element} />
-              <button
-                onMouseDown={e => { e.stopPropagation(); removeItem(item.id); }}
-                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500/80 text-white text-[10px] hidden group-hover:flex items-center justify-center leading-none hover:bg-red-500 z-10"
-              >
-                ×
-              </button>
-            </div>
-          </motion.div>
-        ))}
+        {items.map(item => {
+          const isBlinking = combining && combiningIds?.includes(item.id);
+          return (
+            <motion.div
+              key={item.id}
+              initial={{ scale: 0.4, opacity: 0 }}
+              animate={{
+                scale: flashItem === item.id ? [1, 1.35, 1] : 1,
+                opacity: isBlinking ? [1, 0.2, 1] : 1,
+              }}
+              transition={{
+                scale: { type: 'spring', stiffness: 400, damping: 22 },
+                opacity: isBlinking
+                  ? { duration: 0.6, repeat: Infinity, ease: 'easeInOut' }
+                  : { duration: 0.2 },
+              }}
+              exit={{ scale: 0.4, opacity: 0 }}
+              style={{
+                position: 'absolute',
+                left: item.x,
+                top: item.y,
+                cursor: combining ? 'default' : 'grab',
+                userSelect: 'none',
+                touchAction: 'none',
+              }}
+              onMouseDown={e => !combining && startDrag(e, item.id)}
+              onTouchStart={e => !combining && startDrag(e, item.id)}
+            >
+              <div className="relative group">
+                <ElementTile element={item.element} />
+                {!combining && (
+                  <button
+                    onMouseDown={e => { e.stopPropagation(); removeItem(item.id); }}
+                    className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500/80 text-white text-[10px] hidden group-hover:flex items-center justify-center leading-none hover:bg-red-500 z-10"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          );
+        })}
       </AnimatePresence>
     </div>
   );

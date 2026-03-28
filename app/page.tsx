@@ -229,6 +229,8 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-full">
+      {!storyOpen && (
+        <>
       <Header
         discoveredCount={discovered.length}
         onReset={handleReset}
@@ -252,6 +254,8 @@ export default function Home() {
           newElements={newElements}
         />
       </div>
+        </>
+      )}
 
       <AdminPanel
         open={adminOpen}

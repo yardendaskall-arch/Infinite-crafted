@@ -1,0 +1,166 @@
+'use client';
+import { useState, useEffect, useCallback } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import Header from '@/components/Header';
+import Sidebar from '@/components/Sidebar';
+import GameBoard from '@/components/GameBoard';
+import type { Element } from '@/lib/combinations';
+import { BASE_ELEMENTS } from '@/lib/combinations';
+import { combine } from '@/lib/gameLogic';
+import {
+  loadDiscovered, saveDiscovered,
+  loadBoard, saveBoard,
+  resetGame, genId,
+} from '@/lib/storage';
+import type { BoardItem } from '@/lib/storage';
+
+export default function Home() {
+  const [discovered, setDiscovered] = useState<Element[]>([]);
+  const [boardItems, setBoardItems] = useState<BoardItem[]>([]);
+  const [selectedSidebar, setSelectedSidebar] = useState<Element | null>(null);
+  const [combining, setCombining] = useState(false);
+  const [combineStatus, setCombineStatus] = useState('Thinking...');
+  const [newElements, setNewElements] = useState<Set<string>>(new Set());
+  const [flashItem, setFlashItem] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; emoji: string } | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    setDiscovered(loadDiscovered());
+    setBoardItems(loadBoard());
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (hydrated) saveDiscovered(discovered);
+  }, [discovered, hydrated]);
+
+  useEffect(() => {
+    if (hydrated) saveBoard(boardItems);
+  }, [boardItems, hydrated]);
+
+  const showToast = (msg: string, emoji: string) => {
+    setToast({ msg, emoji });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const addToBoard = useCallback((el: Element) => {
+    const board = document.querySelector('[data-board]');
+    const rect = board?.getBoundingClientRect();
+    const x = rect ? Math.random() * (rect.width - 160) + 40 : 200;
+    const y = rect ? Math.random() * (rect.height - 80) + 40 : 200;
+    setBoardItems(prev => [...prev, { id: genId(), element: el, x, y }]);
+    setSelectedSidebar(null);
+  }, []);
+
+  const handleSidebarSelect = useCallback((el: Element) => {
+    setSelectedSidebar(prev => prev?.name === el.name ? null : el);
+    addToBoard(el);
+  }, [addToBoard]);
+
+  const handleCombine = useCallback(async (a: BoardItem, b: BoardItem) => {
+    if (combining) return;
+    setCombining(true);
+    setCombineStatus('Thinking...');
+
+    try {
+      const discoveredNames = discovered.map(e => e.name);
+      const result = await combine(
+        a.element.name,
+        b.element.name,
+        discoveredNames,
+        (msg) => setCombineStatus(msg)
+      );
+
+      // Remove a and b from board, add result
+      const newItem: BoardItem = {
+        id: genId(),
+        element: { name: result.result, emoji: result.emoji },
+        x: (a.x + b.x) / 2,
+        y: (a.y + b.y) / 2,
+      };
+
+      setBoardItems(prev => [
+        ...prev.filter(i => i.id !== a.id && i.id !== b.id),
+        newItem,
+      ]);
+
+      setFlashItem(newItem.id);
+      setTimeout(() => setFlashItem(null), 600);
+
+      if (result.isNew) {
+        setDiscovered(prev => {
+          if (prev.find(e => e.name === result.result)) return prev;
+          return [...prev, { name: result.result, emoji: result.emoji }];
+        });
+        setNewElements(prev => new Set([...prev, result.result]));
+        showToast(
+          `${result.source === 'neural' ? '🧠 Neural discovery' : '✨ First discovery'}: ${result.result}`,
+          result.emoji
+        );
+        setTimeout(() => {
+          setNewElements(prev => {
+            const next = new Set(prev);
+            next.delete(result.result);
+            return next;
+          });
+        }, 8000);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setCombining(false);
+    }
+  }, [combining, discovered]);
+
+  const handleReset = useCallback(() => {
+    resetGame();
+    setDiscovered([...BASE_ELEMENTS]);
+    setBoardItems([]);
+    setNewElements(new Set());
+  }, []);
+
+  if (!hydrated) return null;
+
+  return (
+    <div className="flex flex-col h-full">
+      <Header discoveredCount={discovered.length} onReset={handleReset} />
+      <div className="flex flex-1 overflow-hidden">
+        {/* Board */}
+        <div className="flex-1 relative" data-board="true">
+          <GameBoard
+            items={boardItems}
+            onItemsChange={setBoardItems}
+            onCombine={handleCombine}
+            combining={combining}
+            combineStatus={combineStatus}
+            flashItem={flashItem}
+          />
+        </div>
+        {/* Sidebar */}
+        <Sidebar
+          elements={discovered}
+          selectedElement={selectedSidebar}
+          onSelect={handleSidebarSelect}
+          newElements={newElements}
+        />
+      </div>
+
+      {/* Toast */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            key="toast"
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#1a1a2e] border border-white/20 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 text-sm"
+          >
+            <span className="text-2xl">{toast.emoji}</span>
+            <span>{toast.msg}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

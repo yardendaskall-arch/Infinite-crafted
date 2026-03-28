@@ -109,7 +109,6 @@ export default function GameBoard({
                 ? { duration: 0.7, repeat: Infinity, ease: 'easeInOut' }
                 : { duration: 0.2 },
             }}
-            exit={{ scale: 0.5, opacity: 0 }}
             style={{
               position: 'absolute',
               left: item.x,

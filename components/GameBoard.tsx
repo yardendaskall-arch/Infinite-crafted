@@ -8,8 +8,6 @@ interface GameBoardProps {
   items: BoardItem[];
   onItemsChange: (items: BoardItem[]) => void;
   onCombine: (a: BoardItem, b: BoardItem) => void;
-  combining: boolean;
-  combiningIds: [string, string] | null;
   flashItem: string | null;
 }
 
@@ -17,8 +15,6 @@ export default function GameBoard({
   items,
   onItemsChange,
   onCombine,
-  combining,
-  combiningIds,
   flashItem,
 }: GameBoardProps) {
   const dragging = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
@@ -42,23 +38,21 @@ export default function GameBoard({
       const dx = clientX - dragging.current.startX;
       const dy = clientY - dragging.current.startY;
       const { id, origX, origY } = dragging.current;
-      onItemsChange(
-        itemsRef.current.map(i =>
-          i.id === id ? { ...i, x: origX + dx, y: origY + dy } : i
-        )
-      );
+      onItemsChange(itemsRef.current.map(i =>
+        i.id === id ? { ...i, x: origX + dx, y: origY + dy } : i
+      ));
     };
 
     const onUp = () => {
       if (!dragging.current) return;
       const released = itemsRef.current.find(i => i.id === dragging.current!.id);
-      if (released) {
+      if (released && !released.isLoading) {
         const THRESH = 60;
-        const other = itemsRef.current.find(
-          i =>
-            i.id !== released.id &&
-            Math.abs(i.x - released.x) < THRESH &&
-            Math.abs(i.y - released.y) < THRESH
+        const other = itemsRef.current.find(i =>
+          i.id !== released.id &&
+          !i.isLoading &&
+          Math.abs(i.x - released.x) < THRESH &&
+          Math.abs(i.y - released.y) < THRESH
         );
         if (other) onCombine(released, other);
       }
@@ -98,48 +92,49 @@ export default function GameBoard({
       )}
 
       <AnimatePresence>
-        {items.map(item => {
-          const isBlinking = combining && combiningIds?.includes(item.id);
-          return (
-            <motion.div
-              key={item.id}
-              initial={{ scale: 0.4, opacity: 0 }}
-              animate={{
-                scale: flashItem === item.id ? [1, 1.35, 1] : 1,
-                opacity: isBlinking ? [1, 0.2, 1] : 1,
-              }}
-              transition={{
-                scale: { type: 'spring', stiffness: 400, damping: 22 },
-                opacity: isBlinking
-                  ? { duration: 0.6, repeat: Infinity, ease: 'easeInOut' }
-                  : { duration: 0.2 },
-              }}
-              exit={{ scale: 0.4, opacity: 0 }}
-              style={{
-                position: 'absolute',
-                left: item.x,
-                top: item.y,
-                cursor: combining ? 'default' : 'grab',
-                userSelect: 'none',
-                touchAction: 'none',
-              }}
-              onMouseDown={e => !combining && startDrag(e, item.id)}
-              onTouchStart={e => !combining && startDrag(e, item.id)}
-            >
-              <div className="relative group">
-                <ElementTile element={item.element} />
-                {!combining && (
-                  <button
-                    onMouseDown={e => { e.stopPropagation(); removeItem(item.id); }}
-                    className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500/80 text-white text-[10px] hidden group-hover:flex items-center justify-center leading-none hover:bg-red-500 z-10"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          );
-        })}
+        {items.map(item => (
+          <motion.div
+            key={item.id}
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{
+              scale: item.isLoading ? [1, 1.15, 1] : flashItem === item.id ? [1, 1.35, 1] : 1,
+              opacity: item.isLoading ? [1, 0.3, 1] : 1,
+            }}
+            exit={{ scale: 0.5, opacity: 0 }}
+            transition={{
+              scale: item.isLoading
+                ? { duration: 0.7, repeat: Infinity, ease: 'easeInOut' }
+                : { type: 'spring', stiffness: 400, damping: 22 },
+              opacity: item.isLoading
+                ? { duration: 0.7, repeat: Infinity, ease: 'easeInOut' }
+                : { duration: 0.2 },
+            }}
+            exit={{ scale: 0.5, opacity: 0 }}
+            style={{
+              position: 'absolute',
+              left: item.x,
+              top: item.y,
+              cursor: item.isLoading ? 'default' : 'grab',
+              userSelect: 'none',
+              touchAction: 'none',
+              pointerEvents: item.isLoading ? 'none' : 'auto',
+            }}
+            onMouseDown={e => !item.isLoading && startDrag(e, item.id)}
+            onTouchStart={e => !item.isLoading && startDrag(e, item.id)}
+          >
+            <div className="relative group">
+              <ElementTile element={item.element} loading={item.isLoading} />
+              {!item.isLoading && (
+                <button
+                  onMouseDown={e => { e.stopPropagation(); removeItem(item.id); }}
+                  className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500/80 text-white text-[10px] hidden group-hover:flex items-center justify-center leading-none hover:bg-red-500 z-10"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          </motion.div>
+        ))}
       </AnimatePresence>
     </div>
   );

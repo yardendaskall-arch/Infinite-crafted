@@ -18,8 +18,6 @@ export default function Home() {
   const boardRef = useRef<HTMLDivElement>(null);
   const [discovered, setDiscovered] = useState<Element[]>([]);
   const [boardItems, setBoardItems] = useState<BoardItem[]>([]);
-  const [combining, setCombining] = useState(false);
-  const [combiningIds, setCombiningIds] = useState<[string, string] | null>(null);
   const [newElements, setNewElements] = useState<Set<string>>(new Set());
   const [flashItem, setFlashItem] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; emoji: string } | null>(null);
@@ -58,9 +56,16 @@ export default function Home() {
   }, [addToBoard]);
 
   const handleCombine = useCallback(async (a: BoardItem, b: BoardItem) => {
-    if (combining) return;
-    setCombining(true);
-    setCombiningIds([a.id, b.id]);
+    // Create a pulsing placeholder immediately where the two items merged
+    const placeholderId = genId();
+    const mx = (a.x + b.x) / 2;
+    const my = (a.y + b.y) / 2;
+
+    // Remove both source items and add placeholder in one update
+    setBoardItems(prev => [
+      ...prev.filter(i => i.id !== a.id && i.id !== b.id),
+      { id: placeholderId, element: { name: '...', emoji: '✨' }, x: mx, y: my, isLoading: true },
+    ]);
 
     try {
       const discoveredNames = discovered.map(e => e.name);
@@ -69,12 +74,13 @@ export default function Home() {
       const newItem: BoardItem = {
         id: genId(),
         element: { name: result.result, emoji: result.emoji },
-        x: (a.x + b.x) / 2,
-        y: (a.y + b.y) / 2,
+        x: mx,
+        y: my,
       };
 
+      // Swap placeholder for result
       setBoardItems(prev => [
-        ...prev.filter(i => i.id !== a.id && i.id !== b.id),
+        ...prev.filter(i => i.id !== placeholderId),
         newItem,
       ]);
 
@@ -98,11 +104,10 @@ export default function Home() {
       }
     } catch (err) {
       console.error(err);
-    } finally {
-      setCombining(false);
-      setCombiningIds(null);
+      // On error remove placeholder
+      setBoardItems(prev => prev.filter(i => i.id !== placeholderId));
     }
-  }, [combining, discovered]);
+  }, [discovered]);
 
   const handleReset = useCallback(() => {
     resetGame();
@@ -122,8 +127,6 @@ export default function Home() {
             items={boardItems}
             onItemsChange={setBoardItems}
             onCombine={handleCombine}
-            combining={combining}
-            combiningIds={combiningIds}
             flashItem={flashItem}
           />
         </div>

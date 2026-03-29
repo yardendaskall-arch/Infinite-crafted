@@ -335,7 +335,6 @@ insert into public.combinations (combo_key, result, emoji) values
 -- ── Story Mode Weapons (hardcoded – AI must not override these) ──
 ('lightning+sword', 'Thunder Blade', '⚡⚔️'),
 ('ash+sword', 'Shadow Blade', '🌑⚔️'),
-('magic+sword', 'Holy Sword', '✨⚔️'),
 ('dragon+sword', 'Dragon Slayer', '🐉⚔️'),
 ('ash+charcoal', 'Gunpowder', '💥'),
 ('gunpowder+metal', 'Gun', '🔫'),

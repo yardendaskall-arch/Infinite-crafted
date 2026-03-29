@@ -343,6 +343,8 @@ export const COMBINATIONS: Record<string, { result: string; emoji: string }> = {
 };
 
 export function getCombination(a: string, b: string): { result: string; emoji: string } | null {
-  const key = makeKey(a, b);
-  return COMBINATIONS[key] ?? null;
+  const aL = a.toLowerCase();
+  const bL = b.toLowerCase();
+  // Try both orderings — some keys in COMBINATIONS are not in sorted order
+  return COMBINATIONS[`${aL}+${bL}`] ?? COMBINATIONS[`${bL}+${aL}`] ?? null;
 }

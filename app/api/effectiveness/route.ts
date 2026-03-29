@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+export const dynamic = 'force-dynamic';
 
 // Server-side cache — survives across requests in the same process
 const cache = new Map<string, 'super' | 'normal' | 'resist'>();
@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
     const completion = await groq.chat.completions.create({
       model: 'meta-llama/llama-4-scout-17b-16e-instruct',
       messages: [

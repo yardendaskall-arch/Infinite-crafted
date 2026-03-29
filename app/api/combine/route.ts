@@ -3,7 +3,7 @@ import Groq from 'groq-sdk';
 import { getCombination } from '@/lib/combinations';
 import { createClient } from '@supabase/supabase-js';
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   const { element1, element2 } = await req.json();
@@ -19,13 +19,11 @@ export async function POST(req: NextRequest) {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (url && key) {
     const supabase = createClient(url, key);
-    const keys = [
-      [element1.toLowerCase(), element2.toLowerCase()].sort().join('+'),
-    ];
+    const comboKey = [element1.toLowerCase(), element2.toLowerCase()].sort().join('+');
     const { data } = await supabase
       .from('combinations')
       .select('result, emoji')
-      .eq('combo_key', keys[0])
+      .eq('combo_key', comboKey)
       .single();
     if (data) {
       return NextResponse.json({ result: data.result, emoji: data.emoji });
@@ -34,13 +32,14 @@ export async function POST(req: NextRequest) {
 
   if (!process.env.GROQ_API_KEY) {
     return NextResponse.json(
-      { error: 'GROQ_API_KEY not set', result: 'Mystery', emoji: '\u2753' },
+      { error: 'GROQ_API_KEY not set', result: 'Mystery', emoji: '❓' },
       { status: 500 }
     );
   }
 
   // 3. Fall back to AI
   try {
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
     const completion = await groq.chat.completions.create({
       model: 'meta-llama/llama-4-scout-17b-16e-instruct',
       messages: [
@@ -68,6 +67,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ result });
   } catch (err) {
     console.error(err);
-    return NextResponse.json({ result: 'Mystery', emoji: '\u2753' }, { status: 500 });
+    return NextResponse.json({ result: 'Mystery', emoji: '❓' }, { status: 500 });
   }
 }

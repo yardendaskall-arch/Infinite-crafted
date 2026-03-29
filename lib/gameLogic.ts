@@ -30,7 +30,8 @@ export async function combine(
   }
 
   // 3. Llama via Groq
-  const res = await fetch('/api/combine', {
+  const base = process.env.NEXT_PUBLIC_API_BASE ?? '';
+  const res = await fetch(`${base}/api/combine`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ element1: a, element2: b }),

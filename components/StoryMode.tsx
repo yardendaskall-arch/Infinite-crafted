@@ -106,7 +106,8 @@ export default function StoryMode({ open, onClose, discovered, onNewElement }: P
     const key = `${elementName}|${monsterName}`;
     if (effectCache[key]) return effectCache[key];
     try {
-      const res = await fetch('/api/effectiveness', {
+      const base = process.env.NEXT_PUBLIC_API_BASE ?? '';
+      const res = await fetch(`${base}/api/effectiveness`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ elementName, monsterName }),

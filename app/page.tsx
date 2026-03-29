@@ -72,7 +72,8 @@ export default function Home() {
       registerUser(stored);
       fetchGifts(stored).then(gifts => setInboxCount(gifts.length));
       // Ensure all hardcoded combinations are in Supabase (idempotent)
-      fetch('/api/seed-combinations', { method: 'POST' }).catch(() => {});
+      const base = process.env.NEXT_PUBLIC_API_BASE ?? '';
+      fetch(`${base}/api/seed-combinations`, { method: 'POST' }).catch(() => {});
     }
 
     setHydrated(true);
